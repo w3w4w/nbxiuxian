@@ -5,7 +5,7 @@ except ImportError:
 import os
 from pathlib import Path
 
-configkey = ["Boss灵石", "Boss名字", "Boss倍率", "Boss生成时间参数", 'open', "世界积分商品"]
+configkey = ["Boss灵石", "Boss名字", "Boss倍率", "Boss生成时间参数","Boss个数上限", 'open', "世界积分商品"]
 CONFIG = {
     "open": {
         "000000": {}
@@ -61,12 +61,13 @@ CONFIG = {
         "散发着威压的尸体"
         ],  # 生成的Boss名字，自行修改
     "讨伐世界Boss体力消耗": 10,
+    "Boss个数上限":30,
     "Boss倍率": {
         # Boss属性：大境界平均修为是基础数值，气血：300倍，真元：10倍，攻击力：0.5倍
         # 作为参考：人物的属性，修为是基础数值，气血：0.5倍，真元：1倍，攻击力：0.1倍
-        "气血": 300,
+        "气血": 250,
         "真元": 10,
-        "攻击": 0.5
+        "攻击": 0.4
     },
     "Boss生成时间参数": {  # Boss生成的时间，2个不可全为0
         "hours": 0,

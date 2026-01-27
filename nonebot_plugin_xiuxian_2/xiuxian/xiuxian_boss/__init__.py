@@ -47,6 +47,7 @@ scheduler = require("nonebot_plugin_apscheduler").scheduler
 
 conf_data = JsonConfig().read_data()
 config = get_boss_config()
+MAX_BOSS_TOTAL = config["Boss个数上限"]
 group_boss = {}
 groups = config['open']
 battle_flag = {}
@@ -148,9 +149,14 @@ async def generate_all_bosses_task():
     global group_boss
     group_id = "000000"  # 全局BOSS存储键
     
-    # 生成全部BOSS
+    # # 生成全部BOSS
+    # bosses = create_all_bosses()
+    # group_boss[group_id] = bosses
+    # old_boss_info.save_boss(group_boss)
+    # 生成全部境界BOSS
     bosses = create_all_bosses()
-    group_boss[group_id] = bosses
+    # 截断列表，确保总数不超配置上限
+    group_boss[group_id] = bosses[:MAX_BOSS_TOTAL]
     old_boss_info.save_boss(group_boss)
     
     # 发送通知
@@ -268,13 +274,13 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
 
     user_id = user_info['user_id']
     
-    # 检查每日讨伐次数限制
-    today_battle_count = boss_limit.get_battle_count(user_id)
-    battle_count = 30
-    if today_battle_count >= battle_count:
-        msg = f"今日讨伐次数已达上限（{battle_count}次），请明日再来！"
-        await handle_send(bot, event, msg)
-        await battle.finish()
+    # # 检查每日讨伐次数限制
+    # today_battle_count = boss_limit.get_battle_count(user_id)
+    # battle_count = 30
+    # if today_battle_count >= battle_count:
+    #     msg = f"今日讨伐次数已达上限（{battle_count}次），请明日再来！"
+    #     await handle_send(bot, event, msg)
+    #     await battle.finish()
     
     is_type, msg = check_user_type(user_id, 0)  # 需要无状态的用户
     if not is_type:
@@ -336,7 +342,7 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
         boss_rank = convert_rank((bossinfo['jj'] + '中期'))[0]
     user_rank = convert_rank(user_info['level'])[0]
     rank_name_list = convert_rank(user_info["level"])[1]
-    if boss_rank - user_rank >= 5:
+    if boss_rank - user_rank >= 7:
         msg = f"道友已是{user_info['level']}之人，妄图抢小辈的Boss，可耻！"
         sql_message.update_user_stamina(user_id, 20, 1)
         await handle_send(bot, event, msg, md_type="世界BOSS", k1="讨伐", v1="讨伐世界BOSS", k2="查询", v2="查询世界BOSS", k3="列表", v3="世界BOSS列表")
@@ -411,24 +417,24 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     integral_buff = user1_sub_buff_data['integral'] if user1_sub_buff_data is not None else 0
     boss_integral = int(boss_integral * (1 + integral_buff))
 
-    # 计算积分奖励
-    if today_integral >= integral_limit:
-        boss_integral = 0
-        integral_msg = "今日积分已达上限，无法获得更多积分！"
-    else:
-        boss_integral = max(int(damage_ratio * 3000), 1)
+    # # 计算积分奖励
+    # if today_integral >= integral_limit:
+    #     boss_integral = 0
+    # #     integral_msg = "今日积分已达上限，无法获得更多积分！"
+    # else:
+    boss_integral = max(int(damage_ratio * 3000), 1)
         # 应用境界压制衰减
-        boss_integral = int(boss_integral * rank_penalty)
-        boss_integral = min(boss_integral, integral_limit - today_integral)
-        if boss_integral <= 0:
-            boss_integral = 1
-        integral_msg = f"获得世界积分：{boss_integral}点"
+    boss_integral = int(boss_integral * rank_penalty)
+    boss_integral = min(boss_integral, integral_limit - today_integral)
+    if boss_integral <= 0:
+        boss_integral = 1
+    #     integral_msg = f"获得世界积分：{boss_integral}点"
 
-    # 计算灵石奖励
-    if today_stone >= stone_limit:
-        get_stone = 0
-        stone_msg = "今日灵石已达上限，无法获得更多灵石！"
-    else:
+    # # 计算灵石奖励
+    # if today_stone >= stone_limit:
+    #     get_stone = 0
+    #     stone_msg = "今日灵石已达上限，无法获得更多灵石！"
+    # else:
         get_stone = int(boss_max_stone * damage_ratio)
         # 应用境界压制衰减
         get_stone = int(get_stone * rank_penalty)
@@ -780,20 +786,36 @@ async def generate_all_bosses(bot: Bot, event: GroupMessageEvent | PrivateMessag
 
 @create.handle(parameterless=[Cooldown(cd_time=1.4)])
 async def create_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args: Message = CommandArg()):
-    """生成世界boss - 每个境界只生成一个"""
+    """生成世界boss - 总数不超过配置的Boss个数上限，同一境界可生成多个"""
     bot, send_group_id = await assign_bot(bot=bot, event=event)
     group_id = "000000"    
+   
 
     try:
         group_boss[group_id]
     except:
         group_boss[group_id] = []
+        
 
-    boss_jj = createboss()
-    for boss in group_boss[group_id][:]:
-        if boss['jj'] == boss_jj:
-            group_boss[group_id].remove(boss)
-            break
+     # 2. 解析生成数量参数（默认1个）
+    args_text = args.extract_plain_text().strip()
+    create_num = 1
+    if args_text and args_text.isdigit():
+        create_num = int(args_text)
+        # 限制生成数量：≥1，且不超过剩余可生成额度
+        create_num = max(1, min(create_num, MAX_BOSS_TOTAL - len(group_boss[group_id])))
+
+    # 3. 检查总数上限
+    current_boss_count = len(group_boss[group_id])
+    if current_boss_count >= MAX_BOSS_TOTAL:
+        msg = f"当前世界BOSS总数已达配置上限（{MAX_BOSS_TOTAL}个），无法生成新BOSS！"
+        await handle_send(bot, event, msg)
+        await create.finish()
+
+    # 4. 生成指定数量的BOSS（移除同境界唯一限制）
+    created_boss_list = []
+    for _ in range(create_num):
+        boss_jj = createboss()  # 随机生成境界
     
     bossinfo = createboss_jj(boss_jj)
     
@@ -802,6 +824,7 @@ async def create_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     msg = f"已生成{boss_jj}Boss:{bossinfo['name']}，诸位道友请击败Boss获得奖励吧!"
     await handle_send(bot, event, msg)
     await create.finish()
+    
 
 @create_appoint.handle(parameterless=[Cooldown(cd_time=1.4)])
 async def _(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args: Message = CommandArg()):
