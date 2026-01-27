@@ -59,7 +59,8 @@ rank = on_command("排行榜", aliases={"修仙排行榜", "灵石排行榜", "�
                   priority=7, block=True)
 remaname = on_command("修仙改名", priority=5, block=True)
 level_up = on_fullmatch("突破", priority=6, block=True)
-level_up_dr = on_fullmatch("渡厄突破", priority=7, block=True)
+
+level_up_dr = on_command("渡厄突破", aliases={"肚饿突破"}, priority=7, block=True)
 level_up_drjd = on_command("渡厄金丹突破", aliases={"金丹突破"}, priority=7, block=True)
 level_up_zj = on_command("直接突破", aliases={"破"}, priority=7, block=True)
 level_up_lx = on_command("连续突破", aliases={"快速突破"}, priority=7, block=True)
@@ -346,7 +347,7 @@ async def handle_lottery(user_info: dict):
         return f"🎉恭喜道友获得三等奖！\n中奖号码：{lottery_number}\n获得奖池的{number_to(prize)}灵石！🎉"
     else:
         # 未中奖
-        return f"本次签到未中奖，奖池继续累积~"
+        return f"本次签到未中奖，奖池继续累积~，输入鸿运查看奖池"
 
 def read_lottery_data():
     """读取奖池数据"""
@@ -382,7 +383,6 @@ async def help_in_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent):
 - 灵石交互: 送/偷/抢灵石+道号+数量
 - 修改道号: 发送"修仙改名+道号"
 - 加入官群: 发送"官群"
-- 邀请奖励: 发送"邀请帮助"
 - 更新日志: 发送"更新日志"，查看游戏最新内容
 
 📊 排行榜单
@@ -2034,7 +2034,7 @@ async def give_stone_(bot: Bot, event: GroupMessageEvent, args: Message = Comman
     arg_list = args.extract_plain_text().split()
     
     if len(arg_list) < 2:
-        msg = f"请输入正确的指令，例如：送灵石 少姜 600000"
+        msg = f"请输入正确的指令，例如：送灵石 雷胖胖 600000"
         await handle_send(bot, event, msg)
         await give_stone.finish()
         
@@ -2151,7 +2151,7 @@ async def give_stone_(bot: Bot, event: GroupMessageEvent, args: Message = Comman
         await handle_send(bot, event, msg)
         await give_stone.finish()
 
-@steal_stone.handle(parameterless=[Cooldown(stamina_cost=10, cd_time=300)])
+@steal_stone.handle(parameterless=[Cooldown(stamina_cost=10, cd_time=120)])
 async def steal_stone_(bot: Bot, event: GroupMessageEvent, args: Message = CommandArg()):
     bot, send_group_id = await assign_bot(bot=bot, event=event)
     isUser, user_info, msg = check_user(event)
@@ -2167,7 +2167,7 @@ async def steal_stone_(bot: Bot, event: GroupMessageEvent, args: Message = Comma
     coststone_num = XiuConfig().tou
     
     if int(coststone_num) > int(user_stone_num):
-        msg = f"道友的偷窃准备(灵石)不足，请打工之后再切格瓦拉！"
+        msg = f"道友自己兜里都没多少吧，被抓不够交保费的哦~"
         sql_message.update_user_stamina(user_id, 10, 1)
         await handle_send(bot, event, msg)
         await steal_stone.finish()
@@ -2242,11 +2242,11 @@ async def steal_stone_(bot: Bot, event: GroupMessageEvent, args: Message = Comma
             await handle_send(bot, event, msg)
             await steal_stone.finish()
     else:
-        msg = f"对方未踏入修仙界，不要对杂修出手！"
+        msg = f"对方未踏入修仙界，不要对凡人出手哦~"
         await handle_send(bot, event, msg)
         await steal_stone.finish()
 
-@rob_stone.handle(parameterless=[Cooldown(stamina_cost=15, cd_time=300)])
+@rob_stone.handle(parameterless=[Cooldown(stamina_cost=15, cd_time=120)])
 async def rob_stone_(bot: Bot, event: GroupMessageEvent, args: Message = CommandArg()):
     """抢劫"""
     bot, send_group_id = await assign_bot(bot=bot, event=event)

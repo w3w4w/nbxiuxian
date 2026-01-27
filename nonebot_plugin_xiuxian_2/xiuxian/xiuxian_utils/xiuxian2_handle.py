@@ -1813,8 +1813,8 @@ class OtherSet(XiuConfig):
 
     def get_power_rate(self, mind, other):
         power_rate = mind / (other + mind)
-        if power_rate >= 0.8:
-            return "道友偷窃小辈实属天道所不齿！"
+        if power_rate >= 0.96:
+            return "道友欺负小辈实属天道所不齿！"
         elif power_rate <= 0.05:
             return "道友请不要不自量力！"
         else:
