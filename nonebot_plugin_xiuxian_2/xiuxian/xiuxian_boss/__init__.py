@@ -58,7 +58,7 @@ generate_all = on_command("世界BOSS全部生成", aliases={"世界boss全部�
 create_appoint = on_command("世界BOSS指定生成", aliases={"世界boss指定生成", "世界Boss指定生成", "指定生成世界BOSS", "指定生成世界boss", "指定生成世界Boss"}, permission=SUPERUSER, priority=5)
 boss_info = on_command("世界BOSS查询", aliases={"世界boss查询", "世界Boss查询", "查询世界BOSS", "查询世界boss", "查询世界Boss"}, priority=6, block=True)
 boss_info2 = on_command("世界BOSS列表", aliases={"世界boss列表", "世界Boss列表"}, priority=6, block=True)
-battle = on_command("世界BOSS讨伐", aliases={"世界boss讨伐", "世界Boss讨伐", "讨伐世界BOSS", "讨伐世界boss", "讨伐世界Boss"}, priority=6, block=True)
+battle = on_command("世界BOSS讨伐", aliases={"世界boss讨伐", "世界Boss讨伐", "讨伐boss", "讨伐世界boss", "讨伐世界Boss"}, priority=6, block=True)
 boss_help = on_command("世界BOSS帮助", aliases={"世界boss帮助", "世界Boss帮助"}, priority=5, block=True)
 boss_admin = on_command("世界BOSS管理", aliases={"世界boss管理", "世界Boss管理"}, priority=5, block=True)
 boss_delete = on_command("世界BOSS天罚", aliases={"世界boss天罚", "世界Boss天罚", "天罚世界BOSS", "天罚世界boss", "天罚世界Boss"}, permission=SUPERUSER, priority=7, block=True)
@@ -270,7 +270,7 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     
     # 检查每日讨伐次数限制
     today_battle_count = boss_limit.get_battle_count(user_id)
-    battle_count = 30
+    battle_count = 300
     if today_battle_count >= battle_count:
         msg = f"今日讨伐次数已达上限（{battle_count}次），请明日再来！"
         await handle_send(bot, event, msg)
@@ -336,7 +336,7 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
         boss_rank = convert_rank((bossinfo['jj'] + '中期'))[0]
     user_rank = convert_rank(user_info['level'])[0]
     rank_name_list = convert_rank(user_info["level"])[1]
-    if boss_rank - user_rank >= 5:
+    if boss_rank - user_rank >= 9:
         msg = f"道友已是{user_info['level']}之人，妄图抢小辈的Boss，可耻！"
         sql_message.update_user_stamina(user_id, 20, 1)
         await handle_send(bot, event, msg, md_type="世界BOSS", k1="讨伐", v1="讨伐世界BOSS", k2="查询", v2="查询世界BOSS", k3="列表", v3="世界BOSS列表")
@@ -371,8 +371,8 @@ async def battle_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     today_stone = int(boss_limit.get_stone(user_id))
     
     # 设置每日上限
-    integral_limit = 6000
-    stone_limit = 300000000
+    integral_limit = 60000
+    stone_limit = 3000000000
     
     # 初始化奖励变量
     boss_integral = 0
