@@ -59,7 +59,7 @@ rank = on_command("排行榜", aliases={"修仙排行榜", "灵石排行榜", "�
                   priority=7, block=True)
 remaname = on_command("修仙改名", priority=5, block=True)
 level_up = on_fullmatch("突破", priority=6, block=True)
-level_up_dr = on_fullmatch("渡厄突破", aliases={"肚饿突破"}, priority=7, block=True)
+level_up_dr = on_fullmatch("渡厄突破", priority=7, block=True)
 level_up_drjd = on_command("渡厄金丹突破", aliases={"金丹突破"}, priority=7, block=True)
 level_up_zj = on_command("直接突破", aliases={"破"}, priority=7, block=True)
 level_up_lx = on_command("连续突破", aliases={"快速突破"}, priority=7, block=True)
@@ -188,18 +188,18 @@ async def remaname_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, ar
         # 扣除灵石
         sql_message.update_ls(user_id, XiuConfig().remaname, 2)
     else:            
-    #     # 检查易名符
-    #     has_item = False
-    #     back_msg = sql_message.get_back_msg(user_id)
-    #     for item in back_msg:
-    #         if item['goods_id'] == 20011 and item['goods_name'] == "易名符":
-    #             has_item = True
-    #             break
+        # # 检查易名符
+        # has_item = False
+        # back_msg = sql_message.get_back_msg(user_id)
+        # for item in back_msg:
+        #     if item['goods_id'] == 20011 and item['goods_name'] == "易名符":
+        #         has_item = True
+        #         break
                 
-    #     if not has_item:
-    #         msg = "修改道号需要消耗1个易名符！"
-    #         await handle_send(bot, event, msg, md_type="修仙", k1="改名", v1="修仙改名", k2="存档", v2="我的修仙信息", k3="帮助", v3="修仙帮助")
-    #         await remaname.finish()
+        # if not has_item:
+        #     msg = "修改道号需要消耗1个易名符！"
+        #     await handle_send(bot, event, msg, md_type="修仙", k1="改名", v1="修仙改名", k2="存档", v2="我的修仙信息", k3="帮助", v3="修仙帮助")
+        #     await remaname.finish()
             
         # 检查名字长度（7个中文字符）
         if len(user_name) > 7:
@@ -213,8 +213,8 @@ async def remaname_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, ar
             await handle_send(bot, event, msg, md_type="修仙", k1="改名", v1="修仙改名", k2="存档", v2="我的修仙信息", k3="帮助", v3="修仙帮助")
             await remaname.finish()
         
-        # # 扣除易名符
-        # sql_message.update_back_j(user_id, 20011, use_key=1)
+    #     # 扣除易名符
+    #     sql_message.update_back_j(user_id, 20011, use_key=1)
     result = sql_message.update_user_name(user_id, user_name)
     msg += result
     await handle_send(bot, event, msg, md_type="修仙", k1="改名", v1="修仙改名", k2="存档", v2="我的修仙信息", k3="帮助", v3="修仙帮助")
@@ -346,7 +346,7 @@ async def handle_lottery(user_info: dict):
         return f"🎉恭喜道友获得三等奖！\n中奖号码：{lottery_number}\n获得奖池的{number_to(prize)}灵石！🎉"
     else:
         # 未中奖
-        return f"本次签到未中奖，奖池继续累积~，输入鸿运查看奖池"
+        return f"本次签到未中奖，奖池继续累积~"
 
 def read_lottery_data():
     """读取奖池数据"""
@@ -490,9 +490,9 @@ async def restart_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, sta
         await handle_send(bot, event, msg)
         await restart.finish()
 
-    # 生成5个随机灵根选项
+    # 生成10个随机灵根选项
     linggen_options = []
-    for _ in range(5):
+    for _ in range(10):
         name, root_type = XiuxianJsonDate().linggen_get()
         linggen_options.append((name, root_type))
     
@@ -513,7 +513,7 @@ async def restart_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, sta
     else:
         # 保留原来的手动选择逻辑
         state["user_id"] = user_id
-        msg = f"{linggen_list_msg}\n\n请从以上灵根中选择一个:\n请输入对应的数字选择 (1-5):"
+        msg = f"{linggen_list_msg}\n\n请从以上灵根中选择一个:\n请输入对应的数字选择 (1-10):"
         state["linggen_options"] = linggen_options
         await handle_send(bot, event, msg, md_type="修仙", k1="手动选择", v1=" ", k2="自动最好", v2="最好", k3="刷新", v3="0")
         
@@ -530,7 +530,7 @@ async def handle_user_choice(bot: Bot, event: GroupMessageEvent | PrivateMessage
         if user_choice == 0:
             await restart_(bot, event, state)
             return
-        elif 1 <= user_choice <= 5:
+        elif 1 <= user_choice <= 10:
             selected_name, selected_root_type = linggen_options[user_choice - 1]
             msg = f"你选择了 {selected_name} 呢！\n"
     else:
