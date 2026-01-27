@@ -1,37 +1,78 @@
-name: Build and Upload project.tar.gz
+name: Compress and Release
 
 on:
-  # 触发条件：手动触发 + 发布新 Release 时触发
+  push:
+    branches:
+      - main  # 推main分支自动触发
   workflow_dispatch:
-  release:
-    types: [published]
+    inputs:
+      tag_name:
+        description: 'Tag name for the release (optional)'
+        required: false
+        default: 'latest'
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
-      # 1. 拉取仓库代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4  # 升级到最新版
 
-      # 2. 打包为 project.tar.gz
-      - name: Build project.tar.gz
-        run: |
-          tar -czvf project.tar.gz \
-            --exclude=".git" \
-            --exclude=".github" \
-            --exclude="venv" \
-            --exclude="__pycache__" \
-            --exclude="*.log" \
-            ./data/ \
-            ./nonebot_plugin_xiuxian_2/ \
-            ./xiuxian_config.py \
-            ./README.md
+    - name: Generate tag name
+      id: tag
+      run: |
+        # 手动触发时用输入的标签，自动触发时用时间戳
+        if [ "${{ github.event.inputs.tag_name }}" != "" ]; then
+          TAGNAME="${{ github.event.inputs.tag_name }}"
+        else
+          TIMESTAMP_UTC8=$(date -u -d "+8 hours" +"%Y%m%d%H%M%S")
+          TAGNAME="v$TIMESTAMP_UTC8"
+        fi
+        echo "::set-output name=TAGNAME::$TAGNAME"
 
-      # 3. 上传到 Release
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: project.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub 自动生成的令牌，无需手动配置
+    - name: Get latest commit message
+      id: commit_message
+      run: |
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "::set-output name=COMMIT_MSG::$COMMIT_MSG"
+
+    - name: Compress project files (精准打包，排除无用文件)
+      run: |
+        rm -f project.tar.gz  # 删除旧包
+        # 只打包你实际存在的文件，排除无用内容（和你本地打包逻辑一致）
+        tar -czvf project.tar.gz \
+          --exclude=".git" \
+          --exclude=".github" \
+          --exclude="venv" \
+          --exclude="__pycache__" \
+          --exclude="*.log" \
+          --exclude="data/backups" \
+          ./data/ \
+          ./nonebot_plugin_xiuxian_2/ \
+          ./__init__.py \
+          ./README.md \
+          ./requirements.txt
+
+    - name: Verify package (验证压缩包有效性)
+      run: |
+        if [ ! -f project.tar.gz ]; then
+          echo "Error: project.tar.gz not found!"
+          exit 1
+        fi
+        tar -tzf project.tar.gz  # 查看包内文件，确认内容完整
+        ls -lh project.tar.gz    # 检查文件大小
+
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v2  # 替代旧的 create-release，兼容性更好
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 用默认令牌，无需额外配置
+      with:
+        tag_name: ${{ steps.tag.outputs.TAGNAME }}
+        name: Release ${{ steps.tag.outputs.TAGNAME }}
+        body: |
+          ## Release Notes
+          ${{ steps.commit_message.outputs.COMMIT_MSG }}
+        draft: false
+        prerelease: false
+        files: project.tar.gz  # 直接上传，无需单独的 upload 步骤
