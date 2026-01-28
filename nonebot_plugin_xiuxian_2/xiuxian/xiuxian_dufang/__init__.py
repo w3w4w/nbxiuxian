@@ -117,12 +117,59 @@ def save_unseal_data(user_id, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# ========== 新增：猜骰子数据管理 ==========
+def get_dice_data(user_id):
+    """获取用户猜骰子数据"""
+    user_id = str(user_id)
+    file_path = PLAYERSDATA / user_id / "dice_data.json"
+    
+    default_data = {
+        "dice_info": {
+            "total_play": 0,      # 总玩次数
+            "win_count": 0,       # 赢的次数
+            "lose_count": 0,      # 输的次数
+            "total_bet": 0,       # 总投注金额
+            "total_win": 0,       # 总赢取金额
+            "total_lose": 0       # 总输掉金额
+        },
+        "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    if not file_path.exists():
+        os.makedirs(file_path.parent, exist_ok=True)
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(default_data, f, ensure_ascii=False, indent=4)
+        return default_data
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    # 确保所有字段都存在
+    for key in default_data:
+        if key not in data:
+            data[key] = default_data[key]
+    
+    return data
+
+def save_dice_data(user_id, data):
+    """保存用户猜骰子数据"""
+    user_id = str(user_id)
+    file_path = PLAYERSDATA / user_id / "dice_data.json"
+    
+    data["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 # 鉴石命令
 unseal = on_command("鉴石", priority=9, block=True)
 unseal_share_on = on_command("鉴石共享开启", priority=10, block=True)
 unseal_share_off = on_command("鉴石共享关闭", priority=10, block=True)
 unseal_help = on_command("鉴石帮助", priority=10, block=True)
 unseal_message = on_command("鉴石信息", priority=10, block=True)
+# ========== 新增：猜骰子命令 ==========
+golden_square_dice = on_command("金银坊", priority=9, block=True)
+dice_help = on_command("猜骰子帮助", priority=10, block=True)
+dice_record = on_command("骰子记录", priority=10, block=True)
 
 # 鉴石帮助
 @unseal_help.handle(parameterless=[Cooldown(cd_time=1.4)])
@@ -138,6 +185,53 @@ async def unseal_help_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent)
 ◆ 共享开启后，你的鉴石结果可能会影响其他共享开启的道友
 ◆ 共享事件可能带来连锁反应，福祸难料"""
     await handle_send(bot, event, help_msg, md_type="鉴石", k1="鉴石", v1="鉴石", k2="信息", v2="鉴石信息", k3="灵石", v3="灵石")
+
+# ========== 新增：猜骰子帮助 ==========
+@dice_help.handle(parameterless=[Cooldown(cd_time=1.4)])
+async def dice_help_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent):
+    help_msg = """※※ 金银坊猜骰子帮助 ※※
+【金银坊 猜数 投注金额】- 参与猜骰子游戏
+  示例：金银坊 奇 5000 、金银坊 3 8000
+◆ 猜数规则：可猜1-6的数字，或猜"奇"/"偶"
+◆ 投注规则：单次投注最低100灵石，最高为当前灵石的40%
+◆ 奖励规则：
+  - 猜具体数字（1-6）：猜对获得投注金额2.5倍灵石
+  - 猜奇偶：猜对获得投注金额1.5倍灵石
+  - 猜错均扣除投注金额
+◆ 查看记录：发送【骰子记录】可查看猜骰子统计数据"""
+    await handle_send(bot, event, help_msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+
+# ========== 新增：骰子记录查询 ==========
+@dice_record.handle(parameterless=[Cooldown(cd_time=1.4)])
+async def dice_record_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent):
+    isUser, user_info, msg = check_user(event)
+    if not isUser:
+        await handle_send(bot, event, msg, md_type="我要修仙")
+        return
+    
+    user_id = user_info['user_id']
+    data = get_dice_data(user_id)
+    dice_info = data["dice_info"]
+    
+    # 计算胜率
+    win_rate = (dice_info["win_count"] / dice_info["total_play"] * 100) if dice_info["total_play"] > 0 else 0
+    # 计算净收益
+    net_profit = dice_info["total_win"] - dice_info["total_lose"]
+    
+    msg = (
+        "※※ 金银坊猜骰子记录 ※※\n"
+        f"【总玩次数】: {dice_info['total_play']}次\n"
+        f"【赢的次数】: {dice_info['win_count']}次\n"
+        f"【输的次数】: {dice_info['lose_count']}次\n"
+        f"【胜率】: {win_rate:.1f}%\n\n"
+        f"【总投注】: {number_to(dice_info['total_bet'])}灵石\n"
+        f"【总赢取】: {number_to(dice_info['total_win'])}灵石\n"
+        f"【总输掉】: {number_to(dice_info['total_lose'])}灵石\n"
+        f"【净收益】: {number_to(net_profit)}灵石\n\n"
+        f"最后更新: {data['last_update']}"
+    )
+    
+    await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子记录", k3="灵石", v3="灵石")
 
 # 共享开启
 @unseal_share_on.handle(parameterless=[Cooldown(cd_time=1.4)])
@@ -299,6 +393,141 @@ async def unseal_message_(bot: Bot, event: GroupMessageEvent | PrivateMessageEve
     
     await handle_send(bot, event, msg, md_type="鉴石", k1="鉴石", v1="鉴石", k2="信息", v2="鉴石信息", k3="灵石", v3="灵石")
 
+# ========== 猜骰子主逻辑（修改后） ==========
+@golden_square_dice.handle(parameterless=[Cooldown(stamina_cost=5)])
+async def golden_square_dice_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args: Message = CommandArg()):
+    bot, send_group_id = await assign_bot(bot=bot, event=event)
+    isUser, user_info, msg = check_user(event)
+    if not isUser:
+        await handle_send(bot, event, msg, md_type="我要修仙")
+        return
+    
+    user_id = user_info['user_id']
+    current_stone = int(user_info['stone'])
+    
+    # 解析参数
+    arg_text = args.extract_plain_text().strip()
+    args_list = arg_text.split()
+    
+    # 参数校验
+    if len(args_list) != 2:
+        msg = "参数格式错误！正确格式：金银坊 猜数 投注金额\n示例：金银坊 奇 5000 、金银坊 3 8000"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    guess_str, bet_str = args_list
+    
+    # 校验投注金额
+    if not bet_str.isdigit():
+        msg = "投注金额必须为数字！"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    bet_amount = int(bet_str)
+    # 投注金额限制：最低100，最高当前灵石的40%
+    min_bet = 100000
+    max_bet = current_stone // 40
+    
+    if bet_amount < min_bet:
+        msg = f"单次投注最低{min_bet}灵石！"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    if bet_amount > max_bet:
+        msg = f"单次投注最高为当前灵石的40%（{number_to(max_bet)}灵石）！"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    if current_stone < bet_amount:
+        msg = f"当前灵石不足！需要{number_to(bet_amount)}灵石，仅有{number_to(current_stone)}灵石。"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    # 生成随机骰子数（1-6）
+    dice_num = random.randint(1, 6)
+    
+    # 解析用户猜测
+    is_correct = False
+    guess_desc = ""
+    reward_rate = 1.5  # 默认倍率（猜奇偶）
+    
+    if guess_str.isdigit():
+        # 猜具体数字 - 难度更高，奖励倍率2.5倍
+        guess_num = int(guess_str)
+        if guess_num < 1 or guess_num > 6:
+            msg = "猜数只能是1-6的数字，或'奇'/'偶'！"
+            await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+            return
+        
+        guess_desc = f"数字{guess_num}"
+        is_correct = (guess_num == dice_num)
+        reward_rate = 2.5  # 猜具体数字的奖励倍率
+    elif guess_str in ["奇", "偶"]:
+        # 猜奇偶 - 基础倍率1.5倍
+        guess_desc = guess_str
+        if guess_str == "奇":
+            is_correct = (dice_num % 2 == 1)
+        else:
+            is_correct = (dice_num % 2 == 0)
+    else:
+        msg = "猜数格式错误！只能是1-6的数字，或'奇'/'偶'。"
+        await handle_send(bot, event, msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="信息", v2="骰子帮助", k3="灵石", v3="灵石")
+        return
+    
+    # 处理游戏结果
+    dice_data = get_dice_data(user_id)
+    dice_info = dice_data["dice_info"]
+    
+    # 更新总投注次数和金额
+    dice_info["total_play"] += 1
+    dice_info["total_bet"] += bet_amount
+    
+    if is_correct:
+        # 猜对：根据不同玩法计算奖励
+        win_amount = int(bet_amount * reward_rate)
+        sql_message.update_ls(user_id, win_amount, 1)
+        new_stone = current_stone + win_amount - bet_amount  # 先扣投注，再加奖励
+        
+        # 更新统计
+        dice_info["win_count"] += 1
+        dice_info["total_win"] += win_amount
+        
+        # 构建消息（区分不同玩法的奖励说明）
+        result_msg = (
+            f"※※ 金银坊猜骰子 ※※\n"
+            f"你投注了{number_to(bet_amount)}灵石，猜测：{guess_desc}\n"
+            f"骰子摇出：{dice_num}点\n"
+            f"🎉 恭喜猜对！获得{number_to(win_amount)}灵石奖励（倍率{reward_rate}倍）！\n"
+            f"当前灵石：{number_to(new_stone)}"
+        )
+        
+        log_message(user_id, f"猜骰子猜对！投注{number_to(bet_amount)}灵石，获得{number_to(win_amount)}灵石奖励（倍率{reward_rate}倍）")
+    else:
+        # 猜错：扣除投注金额（所有玩法扣除规则一致）
+        sql_message.update_ls(user_id, bet_amount, 2)
+        new_stone = current_stone - bet_amount
+        
+        # 更新统计
+        dice_info["lose_count"] += 1
+        dice_info["total_lose"] += bet_amount
+        
+        # 构建消息
+        result_msg = (
+            f"※※ 金银坊猜骰子 ※※\n"
+            f"你投注了{number_to(bet_amount)}灵石，猜测：{guess_desc}\n"
+            f"骰子摇出：{dice_num}点\n"
+            f"❌ 很遗憾猜错了！扣除{number_to(bet_amount)}灵石\n"
+            f"当前灵石：{number_to(new_stone)}"
+        )
+        
+        log_message(user_id, f"猜骰子猜错！投注{number_to(bet_amount)}灵石，扣除{number_to(bet_amount)}灵石")
+    
+    # 保存骰子数据
+    save_dice_data(user_id, dice_data)
+    
+    # 发送结果
+    await handle_send(bot, event, result_msg, md_type="金银坊", k1="金银坊", v1="猜骰子", k2="结果", v2="骰子结果", k3="灵石", v3="灵石")
+
 # 鉴石主逻辑
 @unseal.handle(parameterless=[Cooldown(stamina_cost=20)])
 async def unseal_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args: Message = CommandArg()):
@@ -312,8 +541,8 @@ async def unseal_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     current_stone = int(user_info['stone'])
     
     # 灵石门槛检查
-    if current_stone < 100000000:
-        needed = 100000000 - current_stone
+    if current_stone < 10000000:
+        needed = 10000000 - current_stone
         msg = f"金银阁暂不接待灵石不足的道友，还需{number_to(needed)}灵石"
         await handle_send(bot, event, msg, md_type="鉴石", k1="鉴石", v1="鉴石", k2="信息", v2="鉴石信息", k3="灵石", v3="灵石")
         return
@@ -327,7 +556,7 @@ async def unseal_(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent, args
     arg = args.extract_plain_text().strip()
     if arg.isdigit():
         input_stone = int(arg)
-        max_stone = current_stone // 10  # 最大可传入灵石为当前灵石的10%
+        max_stone = current_stone // 10  # 最大可传入灵石为当前灵石的40%
         max_stone = min(max_stone, 1000000000)
         cost = min(input_stone, max_stone) if max_stone > 0 else 0
         if cost <= 0:

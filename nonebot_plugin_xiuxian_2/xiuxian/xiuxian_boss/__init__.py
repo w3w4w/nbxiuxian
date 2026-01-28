@@ -74,7 +74,7 @@ __boss_help__ = f"""
 世界BOSS系统帮助
 
 🔹🔹 查询指令：
-  ▶ 查询世界BOSS - 查看BOSS列表
+  ▶ 查询世界BOSS - 查看BOSS列表（可加编号）
   ▶ 世界BOSS列表 [页码] - 分页查看BOSS详情
   ▶ 世界BOSS信息 - 查看个人信息
   ▶ 世界BOSS积分排行榜 - 查看排行榜
@@ -923,9 +923,9 @@ async def boss_integral_info_(bot: Bot, event: GroupMessageEvent | PrivateMessag
     today_battle_count = boss_limit.get_battle_count(user_id)
     
     # 设置每日上限
-    integral_limit = 6000
-    stone_limit = 300000000
-    battle_count = 30
+    integral_limit = 60000
+    stone_limit = 3000000000
+    battle_count = 300
     
     # 构建消息
     msg = f"""
